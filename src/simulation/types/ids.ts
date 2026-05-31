@@ -17,3 +17,5 @@ export type RaceId = BrandedId<'RaceId'>;
 export type SeasonId = BrandedId<'SeasonId'>;
 export type ChampionshipId = BrandedId<'ChampionshipId'>;
 export type CircuitId = BrandedId<'CircuitId'>;
+export type OwnerId = BrandedId<'OwnerId'>;
+export type StaffId = BrandedId<'StaffId'>;
