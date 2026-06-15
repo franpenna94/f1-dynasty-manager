@@ -14,8 +14,11 @@ export interface CreateNewSaveOptions {
 
 export function createNewSave(opts: CreateNewSaveOptions): SaveGame {
   const seasonYear = opts.seasonYear ?? 2026;
-  const slotId = opts.slotId ?? `slot-${Date.now()}`;
   const rng = createSeededRng(opts.seed + '-meta');
+  
+  // Generate deterministic slotId from seeded RNG if not provided
+  const slotId = opts.slotId ?? `slot-${Math.floor(rng.nextFloat() * 10000000000)}`;
+  
   const now = new Date(1600000000000 + Math.floor(rng.nextFloat() * 1000000000)).toISOString();
 
   const gameStartYear = seasonYear;
