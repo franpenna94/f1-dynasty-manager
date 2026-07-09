@@ -193,6 +193,94 @@ describe('Weekly Simulation Loop (Sprint 4)', () => {
       expect(result.nextSave!.currentSeason.year).toBe(save.currentSeason.year);
     });
 
+    it('creates a race weekend result for race weeks', () => {
+      const save = createNewSave({ seed: 'race-integration', playerTeamId, seasonYear: 2026 });
+      const calendar = save.currentSeason.calendar;
+      const raceWeekIndex = calendar.weeks.findIndex((week) => week.raceId);
+
+      expect(raceWeekIndex).toBeGreaterThanOrEqual(0);
+
+      let current = save;
+      while (current.metadata.currentWeekIndex < raceWeekIndex) {
+        const result = advanceWeek(current);
+        if (result.status !== 'success') {
+          throw new Error(`Failed to advance: ${result.errorMessage}`);
+        }
+        current = result.nextSave!;
+      }
+
+      const result = advanceWeek(current);
+
+      expect(result.status).toBe('success');
+      expect(result.weekType).toBe('race');
+      expect(result.raceWeekendResult).toBeDefined();
+      expect(result.raceWeekendResult!.status).toBe('completed');
+      expect(result.raceWeekendResult!.nextState?.phase).toBe('completed');
+    });
+
+    it('does not create a race weekend for non-race weeks', () => {
+      const save = createNewSave({ seed: 'non-race-week', playerTeamId, seasonYear: 2026 });
+      save.metadata.currentWeekIndex = 0;
+
+      const result = advanceWeek(save);
+
+      expect(result.status).toBe('success');
+      expect(result.raceWeekendResult).toBeUndefined();
+      expect(result.reports.some((report) => report.type === 'development')).toBe(true);
+    });
+
+    it('keeps the original save unchanged when processing race weeks', () => {
+      const save = createNewSave({ seed: 'race-mutation', playerTeamId, seasonYear: 2026 });
+      const calendar = save.currentSeason.calendar;
+      const raceWeekIndex = calendar.weeks.findIndex((week) => week.raceId);
+
+      expect(raceWeekIndex).toBeGreaterThanOrEqual(0);
+
+      let current = save;
+      while (current.metadata.currentWeekIndex < raceWeekIndex) {
+        const result = advanceWeek(current);
+        if (result.status !== 'success') {
+          throw new Error(`Failed to advance: ${result.errorMessage}`);
+        }
+        current = result.nextSave!;
+      }
+
+      const beforeSnapshot = JSON.stringify(save);
+      advanceWeek(current);
+
+      expect(JSON.stringify(save)).toBe(beforeSnapshot);
+    });
+
+    it('produces deterministic race weekend output for the same seed', () => {
+      const save1 = createNewSave({ seed: 'race-determinism', playerTeamId, seasonYear: 2026 });
+      const save2 = createNewSave({ seed: 'race-determinism', playerTeamId, seasonYear: 2026 });
+      const calendar = save1.currentSeason.calendar;
+      const raceWeekIndex = calendar.weeks.findIndex((week) => week.raceId);
+
+      expect(raceWeekIndex).toBeGreaterThanOrEqual(0);
+
+      let current1 = save1;
+      let current2 = save2;
+      while (current1.metadata.currentWeekIndex < raceWeekIndex) {
+        const result1 = advanceWeek(current1);
+        const result2 = advanceWeek(current2);
+        if (result1.status !== 'success' || result2.status !== 'success') {
+          throw new Error('Failed to line up race week');
+        }
+        current1 = result1.nextSave!;
+        current2 = result2.nextSave!;
+      }
+
+      const result1 = advanceWeek(current1);
+      const result2 = advanceWeek(current2);
+
+      expect(result1.status).toBe(result2.status);
+      expect(result1.weekType).toBe(result2.weekType);
+      expect(result1.raceWeekendResult?.nextState?.startedAt).toBe(
+        result2.raceWeekendResult?.nextState?.startedAt,
+      );
+    });
+
     it('season year is preserved', () => {
       const save = createNewSave({ seed: 'test-seed', playerTeamId, seasonYear: 2027 });
 

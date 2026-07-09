@@ -1,7 +1,9 @@
 import { SaveGame } from '../save/saveGame';
+import { RaceWeekendResult } from '../raceWeekend/raceWeekendResult';
 import { EngineSeasonPhase } from './seasonPhase';
 
 export type SimulationResultStatus = 'success' | 'season_complete' | 'error';
+export type SimulationWeekType = 'race' | 'development';
 
 export interface SimulationReport {
   type: 'race_prep' | 'development' | 'break' | 'offseason' | 'race_result' | 'season_summary';
@@ -24,8 +26,10 @@ export interface SimulationResult {
   nextSave: SaveGame | null;
   weekIndex: number;
   weeksCompleted: number;
+  weekType: SimulationWeekType;
   reports: SimulationReport[];
   events: SimulationEvent[];
+  raceWeekendResult?: RaceWeekendResult;
   errorMessage?: string;
   seasonEndReason?: 'final_week_reached' | 'invalid_state';
 }
@@ -39,6 +43,8 @@ export function createSuccessResult(
   weekIndex: number,
   reports: SimulationReport[] = [],
   events: SimulationEvent[] = [],
+  weekType: SimulationWeekType = 'development',
+  raceWeekendResult?: RaceWeekendResult,
 ): SimulationResult {
   return {
     status: 'success',
@@ -46,8 +52,10 @@ export function createSuccessResult(
     nextSave,
     weekIndex,
     weeksCompleted: 1,
+    weekType,
     reports,
     events,
+    raceWeekendResult,
   };
 }
 
@@ -59,6 +67,8 @@ export function createSeasonCompleteResult(
   weekIndex: number,
   reports: SimulationReport[] = [],
   events: SimulationEvent[] = [],
+  weekType: SimulationWeekType = 'development',
+  raceWeekendResult?: RaceWeekendResult,
 ): SimulationResult {
   return {
     status: 'season_complete',
@@ -66,8 +76,10 @@ export function createSeasonCompleteResult(
     nextSave: null,
     weekIndex,
     weeksCompleted: 0,
+    weekType,
     reports,
     events,
+    raceWeekendResult,
     seasonEndReason: 'final_week_reached',
   };
 }
@@ -86,6 +98,7 @@ export function createErrorResult(
     nextSave: null,
     weekIndex,
     weeksCompleted: 0,
+    weekType: 'development',
     reports: [],
     events: [
       {

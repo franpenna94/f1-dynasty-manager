@@ -246,6 +246,16 @@ describe('Headless Season Loop (Sprint 5)', () => {
       // May or may not have development weeks, but should have at least some reports
       expect(result.allReports.length).toBeGreaterThan(0);
     });
+
+    it('processes race weekends automatically through the season loop', () => {
+      const save = createNewSave({ seed: 'season-race-weekends', playerTeamId, seasonYear: 2026 });
+
+      const result = simulateSeason(save);
+
+      expect(result.status).toBe('success');
+      expect(result.allReports.some((report) => report.type === 'race_prep')).toBe(true);
+      expect(result.allEvents.some((event) => event.eventType === 'race_week_started')).toBe(true);
+    });
   });
 
   describe('Season simulation edge cases', () => {

@@ -1,7 +1,10 @@
 import { SaveGame, validateSaveGame } from '../save/saveGame';
-import { SimulationResult, createSuccessResult, createSeasonCompleteResult, createErrorResult, SimulationReport, SimulationEvent } from './simulationResult';
+import { SimulationResult, SimulationWeekType, createSuccessResult, createSeasonCompleteResult, createErrorResult, SimulationReport, SimulationEvent } from './simulationResult';
 import { getWeekContext, canAdvanceFromWeek } from './weekContext';
 import { createSeededRng } from '../rng/seededRng';
+import { createRaceWeekend } from '../raceWeekend/createRaceWeekend';
+import { advanceRaceWeekend } from '../raceWeekend/advanceRaceWeekend';
+import { RaceWeekendResult } from '../raceWeekend/raceWeekendResult';
 
 /**
  * Advance the simulation by one week.
@@ -55,7 +58,8 @@ export function advanceWeek(save: SaveGame): SimulationResult {
       },
     ];
 
-    return createSeasonCompleteResult(save, currentWeekIndex, reports, events);
+    const weekType: SimulationWeekType = weekContext.isRaceWeek ? 'race' : 'development';
+    return createSeasonCompleteResult(save, currentWeekIndex, reports, events, weekType);
   }
 
   // Deep clone the save to avoid mutation
@@ -80,6 +84,8 @@ export function advanceWeek(save: SaveGame): SimulationResult {
   // Generate reports based on week context
   const reports: SimulationReport[] = [];
   const events: SimulationEvent[] = [];
+  const weekType: SimulationWeekType = nextWeekContext.isRaceWeek ? 'race' : 'development';
+  let raceWeekendResult: RaceWeekendResult | undefined;
 
   if (nextWeekContext.isRaceWeek) {
     reports.push({
@@ -104,6 +110,19 @@ export function advanceWeek(save: SaveGame): SimulationResult {
         message: `Race weekend for ${nextWeekContext.raceName} begins`,
       },
     });
+
+    const raceWeekendState = createRaceWeekend(nextSave, nextWeekIndex);
+    if (raceWeekendState) {
+      let currentWeekendState = raceWeekendState;
+      while (currentWeekendState.phase !== 'completed') {
+        const weekendResult = advanceRaceWeekend(currentWeekendState);
+        if (weekendResult.status === 'error' || !weekendResult.nextState) {
+          break;
+        }
+        raceWeekendResult = weekendResult;
+        currentWeekendState = weekendResult.nextState;
+      }
+    }
   } else {
     reports.push({
       type: 'development',
@@ -128,5 +147,5 @@ export function advanceWeek(save: SaveGame): SimulationResult {
     },
   });
 
-  return createSuccessResult(save, nextSave, nextWeekIndex, reports, events);
+  return createSuccessResult(save, nextSave, nextWeekIndex, reports, events, weekType, raceWeekendResult);
 }
